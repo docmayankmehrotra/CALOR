@@ -1095,35 +1095,36 @@ Be accurate and realistic. highOxalate is true for foods like spinach, kale, bee
       'gemini-2.0-flash-lite',
       'gemini-1.5-flash',
       'gemini-1.5-flash-latest',
-      'gemini-1.5-pro',
     ];
 
+    // AQ. keys are OAuth tokens sent as Bearer; AIza keys go as ?key=
+    const isOAuth = s.apiKey.startsWith('AQ.');
+    const getHeaders = () => isOAuth
+      ? { 'Content-Type': 'application/json', 'Authorization': `Bearer ${s.apiKey}` }
+      : { 'Content-Type': 'application/json' };
+    const getUrl = (model, ver) => isOAuth
+      ? `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent`
+      : `https://generativelanguage.googleapis.com/${ver}/models/${model}:generateContent?key=${s.apiKey}`;
+
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: base64 } }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
+    });
+
     let data, lastErr;
-    for (const model of models) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${s.apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: prompt },
-                { inline_data: { mime_type: mimeType, data: base64 } }
-              ]
-            }],
-            generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
-          })
+    for (const ver of ['v1beta', 'v1']) {
+      for (const model of models) {
+        const res = await fetch(getUrl(model, ver), { method:'POST', headers: getHeaders(), body });
+        if (res.ok) { data = await res.json(); break; }
+        const err = await res.json();
+        lastErr = err.error?.message || 'API error ' + res.status;
+        if (lastErr.includes('API key') || lastErr.includes('UNAUTHENTICATED') || lastErr.includes('401')) {
+          throw new Error('Invalid API key. Please check Settings.');
         }
-      );
-      if (res.ok) { data = await res.json(); break; }
-      const err = await res.json();
-      lastErr = err.error?.message || 'API error ' + res.status;
-      if (!lastErr.includes('not supported') && !lastErr.includes('no longer available') && !lastErr.includes('ListModels')) {
-        throw new Error(lastErr);
       }
+      if (data) break;
     }
-    if (!data) throw new Error('No working model found. Check your API key. Last error: ' + lastErr);
+    if (!data) throw new Error('Could not connect. Last error: ' + lastErr);
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const jsonStr = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
     const result = JSON.parse(jsonStr);
