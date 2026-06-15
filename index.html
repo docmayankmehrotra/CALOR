@@ -1092,18 +1092,37 @@ Be accurate and realistic. highOxalate is true for foods like spinach, kale, bee
     let text;
 
     if (s.apiKey.startsWith('sk-or')) {
-      // OpenRouter — try free vision models in order until one works
-      const orModels = [
-        'qwen/qwen2.5-vl-72b-instruct:free',
-        'qwen/qwen2.5-vl-32b-instruct:free',
-        'mistralai/pixtral-12b:free',
-        'microsoft/phi-4-multimodal-instruct:free',
-        'google/gemini-2.0-flash-lite-001',
-        'meta-llama/llama-4-maverick:free',
-        'meta-llama/llama-4-scout:free',
-      ];
-      let d, orErr;
-      for (const model of orModels) {
+      // Fetch live model list and find a free vision model
+      const modelsRes = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: { 'Authorization': `Bearer ${s.apiKey}` }
+      });
+      if (!modelsRes.ok) throw new Error('Could not reach OpenRouter. Check your key.');
+      const modelsData = await modelsRes.json();
+
+      // Filter: free (pricing.prompt === "0") AND supports image input
+      const freeVision = (modelsData.data || []).filter(m => {
+        const isFree = m.pricing?.prompt === '0' || m.pricing?.prompt === 0 || parseFloat(m.pricing?.prompt) === 0;
+        const hasVision = m.architecture?.input_modalities?.includes('image') ||
+                          m.architecture?.modality?.includes('image') ||
+                          (m.id || '').includes('vl') ||
+                          (m.id || '').includes('vision') ||
+                          (m.id || '').includes('pixtral') ||
+                          (m.id || '').includes('llama-4') ||
+                          (m.id || '').includes('gemini') ||
+                          (m.id || '').includes('qwen2.5-vl') ||
+                          (m.id || '').includes('phi-4-multi');
+        return isFree && hasVision;
+      });
+
+      if (freeVision.length === 0) throw new Error('No free vision models found on your OpenRouter account. You may need to add $1 credit at openrouter.ai/credits');
+
+      // Always try this known working free vision model first
+      freeVision.unshift({ id: 'google/gemma-3-27b-it:free' });
+      freeVision.unshift({ id: 'google/gemma-4-26b-a4b-it:free' });
+      freeVision.unshift({ id: 'google/gemma-4-26b-a4b-it' });
+
+      let d, orErr, usedModel;
+      for (const m of freeVision.slice(0, 8)) {
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -1113,7 +1132,7 @@ Be accurate and realistic. highOxalate is true for foods like spinach, kale, bee
             'X-Title': 'Calor Food Tracker'
           },
           body: JSON.stringify({
-            model,
+            model: m.id,
             messages: [{ role: 'user', content: [
               { type: 'text', text: prompt },
               { type: 'image_url', image_url: { url: currentImageData } }
@@ -1121,14 +1140,12 @@ Be accurate and realistic. highOxalate is true for foods like spinach, kale, bee
             temperature: 0.1, max_tokens: 512
           })
         });
-        if (res.ok) { d = await res.json(); break; }
+        if (res.ok) { d = await res.json(); usedModel = m.id; break; }
         const e = await res.json();
         orErr = e.error?.message || 'error';
-        if (orErr.includes('401') || orErr.includes('invalid api key') || orErr.includes('No auth')) {
-          throw new Error('Invalid OpenRouter key. Please check Settings.');
-        }
+        if (orErr.includes('401') || orErr.includes('No auth')) throw new Error('Invalid OpenRouter key.');
       }
-      if (!d) throw new Error('All free models failed. Last error: ' + orErr);
+      if (!d) throw new Error('Free vision models failed. Try adding $1 credit at openrouter.ai/credits. Error: ' + orErr);
       text = d.choices?.[0]?.message?.content || '';
 
     } else if (s.apiKey.startsWith('AIza')) {
