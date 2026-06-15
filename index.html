@@ -1,0 +1,1604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Calor — Food Tracker</title>
+<link rel="manifest" href="manifest.json">
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #1a1a2e;
+    --card: #16213e;
+    --accent: #e94560;
+    --accent2: #0f3460;
+    --green: #4ade80;
+    --yellow: #fbbf24;
+    --orange: #fb923c;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --border: #1e293b;
+    --warn: #ef4444;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 480px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+  }
+  header {
+    background: var(--surface);
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  header h1 span { color: var(--accent); }
+  .date-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .date-nav button {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    width: 32px; height: 32px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .date-nav span { flex: 1; text-align: center; font-size: 13px; color: var(--muted); }
+  nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 480px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 100;
+  }
+  nav button {
+    flex: 1;
+    padding: 12px 4px 10px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 10px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.2s;
+  }
+  nav button.active { color: var(--accent); }
+  nav button svg { width: 22px; height: 22px; }
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  /* --- DASHBOARD --- */
+  .ring-container {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  .ring-wrap { position: relative; width: 110px; height: 110px; flex-shrink: 0; }
+  .ring-wrap svg { transform: rotate(-90deg); }
+  .ring-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .ring-center .cal-val { font-size: 24px; font-weight: 700; }
+  .ring-center .cal-lbl { font-size: 10px; color: var(--muted); }
+  .macros { flex: 1; }
+  .macro-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .macro-row:last-child { margin-bottom: 0; }
+  .macro-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .macro-label { font-size: 12px; color: var(--muted); width: 55px; }
+  .macro-bar-wrap { flex: 1; background: var(--border); border-radius: 4px; height: 6px; }
+  .macro-bar { height: 6px; border-radius: 4px; transition: width 0.5s; }
+  .macro-val { font-size: 12px; width: 40px; text-align: right; }
+
+  .section-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin: 16px 0 8px; }
+
+  .micro-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .micro-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px;
+    border: 1px solid var(--border);
+  }
+  .micro-card .micro-name { font-size: 11px; color: var(--muted); }
+  .micro-card .micro-val { font-size: 18px; font-weight: 600; margin: 2px 0; }
+  .micro-card .micro-bar-wrap { background: var(--border); border-radius: 4px; height: 4px; }
+  .micro-card .micro-bar { height: 4px; border-radius: 4px; background: var(--accent2); transition: width 0.5s; }
+
+  .log-item {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .log-item.oxalate-warn { border-color: var(--warn); }
+  .log-thumb {
+    width: 52px; height: 52px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: var(--border);
+  }
+  .log-thumb-placeholder {
+    width: 52px; height: 52px;
+    border-radius: 8px;
+    background: var(--border);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+  }
+  .log-info { flex: 1; min-width: 0; }
+  .log-name { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+  .log-time { font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .log-macros { display: flex; gap: 8px; flex-wrap: wrap; }
+  .log-macro-chip {
+    font-size: 11px;
+    background: var(--bg);
+    border-radius: 20px;
+    padding: 2px 8px;
+    color: var(--muted);
+  }
+  .oxalate-badge {
+    background: var(--warn);
+    color: white;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+    margin-top: 4px;
+    display: inline-block;
+  }
+  .log-delete {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 0 0 4px;
+    flex-shrink: 0;
+  }
+
+  /* --- CAMERA --- */
+  .camera-section {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  #preview-container { position: relative; margin-bottom: 16px; }
+  #preview-img {
+    width: 100%;
+    border-radius: 12px;
+    max-height: 280px;
+    object-fit: cover;
+    display: none;
+  }
+  .camera-placeholder {
+    width: 100%;
+    height: 200px;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .camera-placeholder svg { width: 48px; height: 48px; opacity: 0.4; }
+  #file-input { display: none; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 24px;
+    border-radius: 12px;
+    border: none;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .analyze-result {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 12px;
+    border: 1px solid var(--border);
+    display: none;
+    text-align: left;
+  }
+  .result-food-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .result-serving { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .result-cell {
+    background: var(--card);
+    border-radius: 8px;
+    padding: 10px 8px;
+    text-align: center;
+  }
+  .result-cell .rv { font-size: 16px; font-weight: 700; }
+  .result-cell .rk { font-size: 10px; color: var(--muted); }
+  .oxalate-alert {
+    background: rgba(239,68,68,0.15);
+    border: 1px solid var(--warn);
+    border-radius: 10px;
+    padding: 10px 12px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+  .oxalate-alert svg { flex-shrink: 0; color: var(--warn); }
+
+  /* --- SETTINGS --- */
+  .settings-card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--border);
+  }
+  .settings-card label { font-size: 13px; color: var(--muted); display: block; margin-bottom: 6px; }
+  .settings-card input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 15px;
+  }
+  .settings-card input[type=password] { font-family: monospace; letter-spacing: 2px; }
+  .goal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .goal-item label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .goal-item input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 14px;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast {
+    position: fixed;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--surface);
+    color: var(--text);
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    z-index: 999;
+    border: 1px solid var(--border);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .empty-state svg { width: 48px; height: 48px; opacity: 0.3; margin-bottom: 12px; }
+
+  .api-key-hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 6px;
+    line-height: 1.5;
+  }
+  .api-key-hint a { color: var(--accent); }
+
+  .manual-entry {
+    margin-top: 16px;
+  }
+  .manual-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .manual-item label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .manual-item input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 8px 6px;
+    font-size: 13px;
+  }
+  .manual-item.full { grid-column: 1 / -1; }
+  .manual-item.full input { font-size: 15px; padding: 10px 12px; }
+
+  .calories-big {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .calories-goal {
+    font-size: 13px;
+    color: var(--muted);
+  }
+
+  .streak-bar {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+  }
+  .streak-day {
+    flex: 1;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border);
+  }
+  .streak-day.done { background: var(--green); }
+
+  /* --- TRENDS --- */
+  .trend-period-tabs {
+    display: flex;
+    background: var(--card);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 16px;
+    gap: 2px;
+  }
+  .trend-period-tabs button {
+    flex: 1;
+    padding: 8px 4px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .trend-period-tabs button.active {
+    background: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+  .metric-chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .metric-chip {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1.5px solid var(--border);
+    background: none;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .metric-chip.active {
+    color: white;
+    border-color: transparent;
+  }
+  .chart-card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .chart-title { font-size: 13px; font-weight: 600; }
+  .chart-avg { font-size: 12px; color: var(--muted); }
+  .chart-wrap {
+    position: relative;
+    height: 130px;
+    margin: 12px 0 4px;
+  }
+  .chart-wrap svg { width: 100%; height: 100%; overflow: visible; }
+  .chart-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--muted);
+    padding: 0 2px;
+  }
+  .trend-stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .trend-stat {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+    border: 1px solid var(--border);
+  }
+  .trend-stat .ts-val { font-size: 20px; font-weight: 700; }
+  .trend-stat .ts-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .trend-stat .ts-delta { font-size: 11px; margin-top: 4px; }
+  .delta-up { color: #4ade80; }
+  .delta-down { color: var(--warn); }
+  .delta-same { color: var(--muted); }
+  .oxalate-trend-card {
+    background: rgba(239,68,68,0.08);
+    border: 1px solid rgba(239,68,68,0.3);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .oxalate-trend-card .ot-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--warn); }
+  .oxalate-day-list { display: flex; flex-direction: column; gap: 4px; }
+  .oxalate-day-row { display: flex; justify-content: space-between; font-size: 12px; }
+  .oxalate-day-row span:last-child { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<div class="toast" id="toast"></div>
+
+<header>
+  <h1>Ca<span>lor</span></h1>
+  <div class="date-nav">
+    <button onclick="changeDay(-1)">‹</button>
+    <span id="date-display"></span>
+    <button onclick="changeDay(1)">›</button>
+  </div>
+</header>
+
+<!-- DASHBOARD PAGE -->
+<div class="page active" id="page-dashboard">
+  <div class="ring-container">
+    <div class="ring-wrap">
+      <svg viewBox="0 0 110 110" width="110" height="110">
+        <circle cx="55" cy="55" r="48" fill="none" stroke="var(--border)" stroke-width="10"/>
+        <circle id="cal-ring" cx="55" cy="55" r="48" fill="none" stroke="var(--accent)" stroke-width="10"
+          stroke-dasharray="301.6" stroke-dashoffset="301.6" stroke-linecap="round" transition="stroke-dashoffset 0.5s"/>
+      </svg>
+      <div class="ring-center">
+        <div class="cal-val" id="cal-total">0</div>
+        <div class="cal-lbl">kcal</div>
+      </div>
+    </div>
+    <div class="macros">
+      <div class="macro-row">
+        <div class="macro-dot" style="background:#60a5fa"></div>
+        <div class="macro-label">Protein</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-protein" style="width:0%;background:#60a5fa"></div></div>
+        <div class="macro-val" id="val-protein">0g</div>
+      </div>
+      <div class="macro-row">
+        <div class="macro-dot" style="background:#f472b6"></div>
+        <div class="macro-label">Carbs</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-carbs" style="width:0%;background:#f472b6"></div></div>
+        <div class="macro-val" id="val-carbs">0g</div>
+      </div>
+      <div class="macro-row">
+        <div class="macro-dot" style="background:#fbbf24"></div>
+        <div class="macro-label">Fat</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-fat" style="width:0%;background:#fbbf24"></div></div>
+        <div class="macro-val" id="val-fat">0g</div>
+      </div>
+      <div class="macro-row">
+        <div class="macro-dot" style="background:#4ade80"></div>
+        <div class="macro-label">Fiber</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-fiber" style="width:0%;background:#4ade80"></div></div>
+        <div class="macro-val" id="val-fiber">0g</div>
+      </div>
+      <div class="macro-row">
+        <div class="macro-dot" style="background:#c084fc"></div>
+        <div class="macro-label">Sugar</div>
+        <div class="macro-bar-wrap"><div class="macro-bar" id="bar-sugar" style="width:0%;background:#c084fc"></div></div>
+        <div class="macro-val" id="val-sugar">0g</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Minerals</div>
+  <div class="micro-grid">
+    <div class="micro-card">
+      <div class="micro-name">Sodium</div>
+      <div class="micro-val" id="mv-sodium">0mg</div>
+      <div class="micro-bar-wrap"><div class="micro-bar" id="mb-sodium" style="width:0%"></div></div>
+    </div>
+    <div class="micro-card">
+      <div class="micro-name">Potassium</div>
+      <div class="micro-val" id="mv-potassium">0mg</div>
+      <div class="micro-bar-wrap"><div class="micro-bar" id="mb-potassium" style="width:0%;background:#60a5fa"></div></div>
+    </div>
+    <div class="micro-card">
+      <div class="micro-name">Calcium</div>
+      <div class="micro-val" id="mv-calcium">0mg</div>
+      <div class="micro-bar-wrap"><div class="micro-bar" id="mb-calcium" style="width:0%;background:#4ade80"></div></div>
+    </div>
+    <div class="micro-card">
+      <div class="micro-name">Iron</div>
+      <div class="micro-val" id="mv-iron">0mg</div>
+      <div class="micro-bar-wrap"><div class="micro-bar" id="mb-iron" style="width:0%;background:#fb923c"></div></div>
+    </div>
+    <div class="micro-card">
+      <div class="micro-name">Magnesium</div>
+      <div class="micro-val" id="mv-magnesium">0mg</div>
+      <div class="micro-bar-wrap"><div class="micro-bar" id="mb-magnesium" style="width:0%;background:#c084fc"></div></div>
+    </div>
+  </div>
+
+  <div class="section-title">Today's Food Log</div>
+  <div id="log-list"></div>
+</div>
+
+<!-- CAMERA PAGE -->
+<div class="page" id="page-camera">
+  <div class="camera-section">
+    <div id="preview-container">
+      <div class="camera-placeholder" id="cam-placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M6.5 4h11l1.5 2H20a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1L6.5 4z"/>
+          <circle cx="12" cy="13" r="3.5"/>
+        </svg>
+        <span>Take or upload a photo of your food</span>
+      </div>
+      <img id="preview-img" alt="Food preview">
+    </div>
+
+    <input type="file" id="file-input" accept="image/*" capture="environment">
+    <button class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M6.5 4h11l1.5 2H20a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1L6.5 4z"/>
+        <circle cx="12" cy="13" r="3"/>
+      </svg>
+      Take / Upload Photo
+    </button>
+    <button class="btn btn-secondary" id="analyze-btn" disabled onclick="analyzeFood()">
+      Analyze Food
+    </button>
+  </div>
+
+  <div class="analyze-result" id="analyze-result">
+    <div id="oxalate-alert-box" style="display:none" class="oxalate-alert">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div>
+        <strong>High Oxalate Food</strong>
+        <div id="oxalate-detail" style="margin-top:2px;color:var(--muted);font-size:12px"></div>
+      </div>
+    </div>
+    <div class="result-food-name" id="result-name"></div>
+    <div class="result-serving" id="result-serving"></div>
+    <div class="result-grid" id="result-macros"></div>
+    <div class="section-title">Minerals</div>
+    <div class="result-grid" id="result-micros"></div>
+    <button class="btn btn-primary" onclick="logFood()" style="margin-top:8px">
+      + Add to Log
+    </button>
+    <button class="btn btn-secondary" onclick="editManually()">
+      Edit Values
+    </button>
+  </div>
+
+  <!-- Manual Entry -->
+  <div class="manual-entry" id="manual-entry" style="display:none">
+    <div class="settings-card">
+      <div style="font-size:14px;font-weight:600;margin-bottom:12px">Manual Entry</div>
+      <div class="manual-grid">
+        <div class="manual-item full">
+          <label>Food Name</label>
+          <input type="text" id="m-name" placeholder="e.g. Oatmeal with berries">
+        </div>
+        <div class="manual-item">
+          <label>Calories (kcal)</label>
+          <input type="number" id="m-calories" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Protein (g)</label>
+          <input type="number" id="m-protein" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Carbs (g)</label>
+          <input type="number" id="m-carbs" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Fat (g)</label>
+          <input type="number" id="m-fat" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Sugar (g)</label>
+          <input type="number" id="m-sugar" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Fiber (g)</label>
+          <input type="number" id="m-fiber" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Sodium (mg)</label>
+          <input type="number" id="m-sodium" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Potassium (mg)</label>
+          <input type="number" id="m-potassium" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Calcium (mg)</label>
+          <input type="number" id="m-calcium" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Iron (mg)</label>
+          <input type="number" id="m-iron" placeholder="0">
+        </div>
+        <div class="manual-item">
+          <label>Magnesium (mg)</label>
+          <input type="number" id="m-magnesium" placeholder="0">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="logManual()">+ Add to Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- TRENDS PAGE -->
+<div class="page" id="page-trends">
+  <div class="trend-period-tabs">
+    <button class="active" onclick="setTrendPeriod('7d',this)">7 Days</button>
+    <button onclick="setTrendPeriod('30d',this)">30 Days</button>
+    <button onclick="setTrendPeriod('90d',this)">3 Months</button>
+  </div>
+
+  <div class="metric-chips" id="metric-chips"></div>
+
+  <div class="trend-stat-grid" id="trend-stats"></div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <span class="chart-title" id="chart-title">Calories</span>
+      <span class="chart-avg" id="chart-avg-label"></span>
+    </div>
+    <div class="chart-wrap">
+      <svg id="trend-svg" viewBox="0 0 400 130" preserveAspectRatio="none"></svg>
+    </div>
+    <div class="chart-labels" id="chart-x-labels"></div>
+  </div>
+
+  <div class="oxalate-trend-card" id="oxalate-trend-card">
+    <div class="ot-title">⚠ High Oxalate Days</div>
+    <div class="oxalate-day-list" id="oxalate-day-list"></div>
+  </div>
+
+  <div class="section-title">Daily Breakdown</div>
+  <div id="trend-day-list"></div>
+</div>
+
+<!-- HISTORY PAGE -->
+<div class="page" id="page-history">
+  <div class="section-title">7-Day Summary</div>
+  <div id="history-list"></div>
+</div>
+
+<!-- SETTINGS PAGE -->
+<div class="page" id="page-settings">
+  <div class="settings-card">
+    <label>Gemini API Key</label>
+    <input type="password" id="api-key-input" placeholder="AIza..." oninput="saveSettings()">
+    <div class="api-key-hint">
+      Free at <a href="#" onclick="return false">aistudio.google.com/app/apikey</a> — 1,500 requests/day free.<br>
+      Your key is stored only on this device.
+    </div>
+  </div>
+
+  <div class="settings-card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:12px">Daily Goals</div>
+    <div class="goal-grid">
+      <div class="goal-item">
+        <label>Calories (kcal)</label>
+        <input type="number" id="g-calories" value="2000" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Protein (g)</label>
+        <input type="number" id="g-protein" value="150" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Carbs (g)</label>
+        <input type="number" id="g-carbs" value="250" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Fat (g)</label>
+        <input type="number" id="g-fat" value="65" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Fiber (g)</label>
+        <input type="number" id="g-fiber" value="25" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Sugar (g)</label>
+        <input type="number" id="g-sugar" value="50" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Sodium (mg)</label>
+        <input type="number" id="g-sodium" value="2300" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Potassium (mg)</label>
+        <input type="number" id="g-potassium" value="3500" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Calcium (mg)</label>
+        <input type="number" id="g-calcium" value="1000" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Iron (mg)</label>
+        <input type="number" id="g-iron" value="18" oninput="saveSettings()">
+      </div>
+      <div class="goal-item">
+        <label>Magnesium (mg)</label>
+        <input type="number" id="g-magnesium" value="400" oninput="saveSettings()">
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">High Oxalate Foods List</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6">
+      The app automatically flags these foods:<br>
+      spinach, kale, beet, chard, rhubarb, nuts, peanut, almond, cashew, chocolate, cocoa, tea, coffee, sweet potato, potato, wheat bran, soy, tofu, okra, berries, strawberry, raspberry, fig, dates
+    </div>
+  </div>
+
+  <div class="settings-card">
+    <div style="font-size:14px;font-weight:600;margin-bottom:8px">Data</div>
+    <button class="btn btn-secondary" onclick="exportData()" style="margin-bottom:8px">Export CSV</button>
+    <button class="btn btn-secondary" style="border-color:var(--warn);color:var(--warn)" onclick="clearAllData()">Clear All Data</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav>
+  <button class="active" onclick="showPage('dashboard',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+      <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+    </svg>
+    Today
+  </button>
+  <button onclick="showPage('camera',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M6.5 4h11l1.5 2H20a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h1L6.5 4z"/>
+      <circle cx="12" cy="13" r="3"/>
+    </svg>
+    Log Food
+  </button>
+  <button onclick="showPage('trends',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    Trends
+  </button>
+  <button onclick="showPage('history',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/>
+      <path d="M12 7v5l4 2"/>
+    </svg>
+    History
+  </button>
+  <button onclick="showPage('settings',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    Settings
+  </button>
+</nav>
+
+<script>
+// ===================== STATE =====================
+let currentDate = todayStr();
+let currentResult = null;
+let currentImageData = null;
+
+const HIGH_OXALATE = [
+  'spinach','kale','beet','chard','rhubarb','nut','peanut','almond','cashew',
+  'pistachio','pecan','walnut','hazelnut','chocolate','cocoa','cacao','tea',
+  'sweet potato','yam','wheat bran','bran','soy','tofu','tempeh','miso',
+  'okra','berry','berries','strawberry','raspberry','blackberry','gooseberry',
+  'fig','date','raisin','grape','leek','celery','potato','carrot juice','miso'
+];
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function getData(key, def) {
+  try { return JSON.parse(localStorage.getItem(key)) ?? def; } catch { return def; }
+}
+function setData(key, val) {
+  localStorage.setItem(key, JSON.stringify(val));
+}
+
+function getLog(date) { return getData('log_' + date, []); }
+function saveLog(date, log) { setData('log_' + date, log); }
+function getSettings() {
+  return getData('settings', {
+    apiKey: '',
+    goals: { calories:2000,protein:150,carbs:250,fat:65,fiber:25,sugar:50,
+              sodium:2300,potassium:3500,calcium:1000,iron:18,magnesium:400 }
+  });
+}
+
+// ===================== UI =====================
+function showPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'history') renderHistory();
+  if (name === 'trends') renderTrends();
+}
+
+function toast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function changeDay(delta) {
+  const d = new Date(currentDate + 'T12:00:00');
+  d.setDate(d.getDate() + delta);
+  const next = d.toISOString().split('T')[0];
+  if (next > todayStr()) return;
+  currentDate = next;
+  updateDateDisplay();
+  renderDashboard();
+}
+
+function updateDateDisplay() {
+  const d = new Date(currentDate + 'T12:00:00');
+  const isToday = currentDate === todayStr();
+  const opts = { weekday:'short', month:'short', day:'numeric' };
+  document.getElementById('date-display').textContent =
+    isToday ? 'Today, ' + d.toLocaleDateString(undefined, {month:'short',day:'numeric'})
+             : d.toLocaleDateString(undefined, opts);
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard() {
+  const log = getLog(currentDate);
+  const s = getSettings();
+  const g = s.goals;
+
+  const totals = { calories:0,protein:0,carbs:0,fat:0,fiber:0,sugar:0,
+                   sodium:0,potassium:0,calcium:0,iron:0,magnesium:0 };
+  log.forEach(e => {
+    Object.keys(totals).forEach(k => { totals[k] += (e[k] || 0); });
+  });
+
+  // Calorie ring
+  const pct = Math.min(totals.calories / g.calories, 1);
+  const circ = 2 * Math.PI * 48;
+  document.getElementById('cal-ring').style.strokeDashoffset = circ - (circ * pct);
+  document.getElementById('cal-total').textContent = Math.round(totals.calories);
+
+  // Macros
+  const macros = [
+    {k:'protein',color:'#60a5fa'},
+    {k:'carbs',color:'#f472b6'},
+    {k:'fat',color:'#fbbf24'},
+    {k:'fiber',color:'#4ade80'},
+    {k:'sugar',color:'#c084fc'},
+  ];
+  macros.forEach(m => {
+    const pct = Math.min((totals[m.k] / g[m.k]) * 100, 100);
+    document.getElementById('bar-' + m.k).style.width = pct + '%';
+    document.getElementById('val-' + m.k).textContent = Math.round(totals[m.k]) + 'g';
+  });
+
+  // Micros
+  const micros = [
+    {k:'sodium',unit:'mg',color:'var(--accent)'},
+    {k:'potassium',unit:'mg',color:'#60a5fa'},
+    {k:'calcium',unit:'mg',color:'#4ade80'},
+    {k:'iron',unit:'mg',color:'#fb923c'},
+    {k:'magnesium',unit:'mg',color:'#c084fc'},
+  ];
+  micros.forEach(m => {
+    const v = Math.round(totals[m.k]);
+    const unit = m.unit;
+    const pct = Math.min((totals[m.k] / g[m.k]) * 100, 100);
+    document.getElementById('mv-' + m.k).textContent = v + unit;
+    const bar = document.getElementById('mb-' + m.k);
+    if (bar) { bar.style.width = pct + '%'; bar.style.background = m.color; }
+  });
+
+  // Log list
+  const el = document.getElementById('log-list');
+  if (log.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M3 6h18M3 12h18M3 18h18"/>
+      </svg>
+      <div>No food logged yet.<br>Tap <strong>Log Food</strong> to get started.</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = log.map((e, i) => `
+    <div class="log-item ${e.highOxalate ? 'oxalate-warn' : ''}">
+      ${e.thumb
+        ? `<img class="log-thumb" src="${e.thumb}" alt="">`
+        : `<div class="log-thumb-placeholder">${e.emoji || '🍽️'}</div>`}
+      <div class="log-info">
+        <div class="log-name">${e.name}</div>
+        <div class="log-time">${e.time} · ${Math.round(e.calories)} kcal</div>
+        <div class="log-macros">
+          <span class="log-macro-chip">P: ${Math.round(e.protein)}g</span>
+          <span class="log-macro-chip">C: ${Math.round(e.carbs)}g</span>
+          <span class="log-macro-chip">F: ${Math.round(e.fat)}g</span>
+        </div>
+        ${e.highOxalate ? `<span class="oxalate-badge">⚠ High Oxalate</span>` : ''}
+      </div>
+      <button class="log-delete" onclick="deleteEntry(${i})">✕</button>
+    </div>
+  `).reverse().join('');
+}
+
+function deleteEntry(i) {
+  const log = getLog(currentDate);
+  log.splice(i, 1);
+  saveLog(currentDate, log);
+  renderDashboard();
+  toast('Entry removed');
+}
+
+// ===================== CAMERA / ANALYZE =====================
+document.getElementById('file-input').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data = ev.target.result;
+    currentImageData = data;
+    document.getElementById('preview-img').src = data;
+    document.getElementById('preview-img').style.display = 'block';
+    document.getElementById('cam-placeholder').style.display = 'none';
+    document.getElementById('analyze-btn').disabled = false;
+    document.getElementById('analyze-result').style.display = 'none';
+    document.getElementById('manual-entry').style.display = 'none';
+    currentResult = null;
+  };
+  reader.readAsDataURL(file);
+});
+
+async function analyzeFood() {
+  const s = getSettings();
+  if (!s.apiKey) {
+    toast('Add your Gemini API key in Settings first');
+    showPage('settings', document.querySelectorAll('nav button')[3]);
+    return;
+  }
+
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+
+  try {
+    const base64 = currentImageData.split(',')[1];
+    const mimeType = currentImageData.split(';')[0].split(':')[1];
+
+    const prompt = `You are a nutrition expert. Analyze this food image and return ONLY a valid JSON object with no markdown, no explanation.
+
+Return this exact structure:
+{
+  "name": "food name",
+  "serving": "estimated serving size",
+  "calories": number,
+  "protein": number,
+  "carbs": number,
+  "fat": number,
+  "sugar": number,
+  "fiber": number,
+  "sodium": number,
+  "potassium": number,
+  "calcium": number,
+  "iron": number,
+  "magnesium": number,
+  "highOxalate": true or false,
+  "oxalateNote": "brief note if high oxalate, else empty string",
+  "emoji": "single relevant emoji"
+}
+
+All nutrient values in grams except sodium/potassium/calcium/iron/magnesium which are in mg.
+Be accurate and realistic. highOxalate is true for foods like spinach, kale, beets, nuts, chocolate, tea, sweet potato, tofu, wheat bran, berries, rhubarb, etc.`;
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${s.apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: base64 } }
+            ]
+          }],
+          generationConfig: { temperature: 0.1, maxOutputTokens: 512 }
+        })
+      }
+    );
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error?.message || 'API error ' + response.status);
+    }
+
+    const data = await response.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const jsonStr = text.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+    const result = JSON.parse(jsonStr);
+
+    currentResult = result;
+    displayResult(result);
+
+  } catch(err) {
+    toast('Error: ' + err.message, 4000);
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Analyze Food';
+  }
+}
+
+function displayResult(r) {
+  document.getElementById('result-name').textContent = r.name;
+  document.getElementById('result-serving').textContent = r.serving || '';
+
+  const macros = [
+    {k:'calories',lbl:'Calories',unit:'kcal'},
+    {k:'protein',lbl:'Protein',unit:'g'},
+    {k:'carbs',lbl:'Carbs',unit:'g'},
+    {k:'fat',lbl:'Fat',unit:'g'},
+    {k:'sugar',lbl:'Sugar',unit:'g'},
+    {k:'fiber',lbl:'Fiber',unit:'g'},
+  ];
+  document.getElementById('result-macros').innerHTML = macros.map(m =>
+    `<div class="result-cell"><div class="rv">${Math.round(r[m.k] || 0)}${m.unit}</div><div class="rk">${m.lbl}</div></div>`
+  ).join('');
+
+  const micros = [
+    {k:'sodium',lbl:'Sodium',unit:'mg'},
+    {k:'potassium',lbl:'Potassium',unit:'mg'},
+    {k:'calcium',lbl:'Calcium',unit:'mg'},
+    {k:'iron',lbl:'Iron',unit:'mg'},
+    {k:'magnesium',lbl:'Magnesium',unit:'mg'},
+  ];
+  document.getElementById('result-micros').innerHTML = micros.map(m =>
+    `<div class="result-cell"><div class="rv">${Math.round(r[m.k] || 0)}${m.unit}</div><div class="rk">${m.lbl}</div></div>`
+  ).join('');
+
+  const oxBox = document.getElementById('oxalate-alert-box');
+  if (r.highOxalate) {
+    oxBox.style.display = 'flex';
+    document.getElementById('oxalate-detail').textContent = r.oxalateNote || 'This food is high in oxalates. Consume in moderation if you are prone to kidney stones.';
+  } else {
+    oxBox.style.display = 'none';
+  }
+
+  document.getElementById('analyze-result').style.display = 'block';
+}
+
+function logFood() {
+  if (!currentResult) return;
+  const log = getLog(currentDate);
+  const now = new Date();
+  const entry = {
+    ...currentResult,
+    time: now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
+    thumb: currentImageData ? resizeThumb(currentImageData) : null,
+    id: Date.now()
+  };
+
+  // Also check by name for oxalates
+  const nameLower = (currentResult.name || '').toLowerCase();
+  if (!entry.highOxalate) {
+    entry.highOxalate = HIGH_OXALATE.some(ox => nameLower.includes(ox));
+  }
+
+  log.push(entry);
+  saveLog(currentDate, log);
+  toast('✓ ' + currentResult.name + ' logged!');
+
+  // Reset
+  currentResult = null;
+  currentImageData = null;
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('cam-placeholder').style.display = 'flex';
+  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('analyze-result').style.display = 'none';
+  document.getElementById('file-input').value = '';
+
+  showPage('dashboard', document.querySelectorAll('nav button')[0]);
+}
+
+function resizeThumb(dataUrl) {
+  const canvas = document.createElement('canvas');
+  const img = new Image();
+  img.src = dataUrl;
+  canvas.width = 104; canvas.height = 104;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0, 104, 104);
+  return canvas.toDataURL('image/jpeg', 0.7);
+}
+
+function editManually() {
+  const r = currentResult || {};
+  const fields = ['name','calories','protein','carbs','fat','sugar','fiber','sodium','potassium','calcium','iron','magnesium'];
+  fields.forEach(f => {
+    const el = document.getElementById('m-' + f);
+    if (el) el.value = r[f] || '';
+  });
+  document.getElementById('manual-entry').style.display = 'block';
+  document.getElementById('analyze-result').style.display = 'none';
+  document.getElementById('manual-entry').scrollIntoView({behavior:'smooth'});
+}
+
+function logManual() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { toast('Enter a food name'); return; }
+
+  const fields = ['calories','protein','carbs','fat','sugar','fiber','sodium','potassium','calcium','iron','magnesium'];
+  const entry = { name };
+  fields.forEach(f => { entry[f] = parseFloat(document.getElementById('m-' + f).value) || 0; });
+
+  const nameLower = name.toLowerCase();
+  entry.highOxalate = HIGH_OXALATE.some(ox => nameLower.includes(ox));
+  entry.oxalateNote = entry.highOxalate ? 'This food is high in oxalates.' : '';
+  entry.emoji = '🍽️';
+  entry.time = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  entry.thumb = currentImageData ? resizeThumb(currentImageData) : null;
+  entry.id = Date.now();
+
+  const log = getLog(currentDate);
+  log.push(entry);
+  saveLog(currentDate, log);
+  toast('✓ ' + name + ' logged!');
+
+  document.getElementById('manual-entry').style.display = 'none';
+  document.getElementById('m-name').value = '';
+  fields.forEach(f => document.getElementById('m-' + f).value = '');
+  currentImageData = null;
+  document.getElementById('preview-img').style.display = 'none';
+  document.getElementById('cam-placeholder').style.display = 'flex';
+
+  showPage('dashboard', document.querySelectorAll('nav button')[0]);
+}
+
+// ===================== HISTORY =====================
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(d.toISOString().split('T')[0]);
+  }
+
+  el.innerHTML = days.map(date => {
+    const log = getLog(date);
+    if (log.length === 0 && date !== todayStr()) return '';
+    const totals = { calories:0,protein:0,carbs:0,fat:0 };
+    log.forEach(e => Object.keys(totals).forEach(k => totals[k] += (e[k]||0)));
+    const g = getSettings().goals;
+    const isToday = date === todayStr();
+    const d = new Date(date + 'T12:00:00');
+    const label = isToday ? 'Today' : d.toLocaleDateString(undefined, {weekday:'short',month:'short',day:'numeric'});
+    const calPct = Math.min((totals.calories / g.calories) * 100, 100);
+    const oxCount = log.filter(e => e.highOxalate).length;
+
+    return `<div class="log-item" style="flex-direction:column;gap:8px" onclick="currentDate='${date}';updateDateDisplay();showPage('dashboard',document.querySelectorAll('nav button')[0])">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div style="font-weight:600">${label}</div>
+        <div style="font-size:13px;color:var(--muted)">${log.length} items</div>
+      </div>
+      <div style="display:flex;gap:12px;font-size:13px">
+        <span style="color:var(--accent)">${Math.round(totals.calories)} kcal</span>
+        <span style="color:var(--muted)">P ${Math.round(totals.protein)}g</span>
+        <span style="color:var(--muted)">C ${Math.round(totals.carbs)}g</span>
+        <span style="color:var(--muted)">F ${Math.round(totals.fat)}g</span>
+        ${oxCount > 0 ? `<span style="color:var(--warn)">⚠ ${oxCount} high-oxalate</span>` : ''}
+      </div>
+      <div style="background:var(--border);border-radius:4px;height:6px">
+        <div style="width:${calPct}%;height:6px;border-radius:4px;background:var(--accent);transition:width 0.5s"></div>
+      </div>
+    </div>`;
+  }).filter(Boolean).join('') || `<div class="empty-state"><div>No history yet</div></div>`;
+}
+
+// ===================== SETTINGS =====================
+function loadSettings() {
+  const s = getSettings();
+  document.getElementById('api-key-input').value = s.apiKey || '';
+  const g = s.goals;
+  Object.keys(g).forEach(k => {
+    const el = document.getElementById('g-' + k);
+    if (el) el.value = g[k];
+  });
+}
+
+function saveSettings() {
+  const apiKey = document.getElementById('api-key-input').value.trim();
+  const goals = {};
+  ['calories','protein','carbs','fat','fiber','sugar','sodium','potassium','calcium','iron','magnesium'].forEach(k => {
+    goals[k] = parseFloat(document.getElementById('g-' + k).value) || 0;
+  });
+  setData('settings', { apiKey, goals });
+}
+
+function exportData() {
+  const rows = [['Date','Food','Calories','Protein','Carbs','Fat','Sugar','Fiber','Sodium','Potassium','Calcium','Iron','Magnesium','High Oxalate']];
+  for (let i = 0; i < 90; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const date = d.toISOString().split('T')[0];
+    const log = getLog(date);
+    log.forEach(e => {
+      rows.push([date,e.name,e.calories,e.protein,e.carbs,e.fat,e.sugar,e.fiber,e.sodium,e.potassium,e.calcium,e.iron,e.magnesium,e.highOxalate?'Yes':'No']);
+    });
+  }
+  const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'calor-export.csv';
+  a.click();
+}
+
+function clearAllData() {
+  if (!confirm('Delete ALL food log data? This cannot be undone.')) return;
+  Object.keys(localStorage).forEach(k => { if (k.startsWith('log_')) localStorage.removeItem(k); });
+  renderDashboard();
+  toast('All data cleared');
+}
+
+// ===================== TRENDS =====================
+const METRICS = [
+  { k:'calories', lbl:'Calories', unit:'kcal', color:'#e94560' },
+  { k:'protein',  lbl:'Protein',  unit:'g',    color:'#60a5fa' },
+  { k:'carbs',    lbl:'Carbs',    unit:'g',    color:'#f472b6' },
+  { k:'fat',      lbl:'Fat',      unit:'g',    color:'#fbbf24' },
+  { k:'fiber',    lbl:'Fiber',    unit:'g',    color:'#4ade80' },
+  { k:'sugar',    lbl:'Sugar',    unit:'g',    color:'#c084fc' },
+  { k:'sodium',   lbl:'Sodium',   unit:'mg',   color:'#fb923c' },
+  { k:'potassium',lbl:'Potassium',unit:'mg',   color:'#34d399' },
+  { k:'calcium',  lbl:'Calcium',  unit:'mg',   color:'#a78bfa' },
+  { k:'iron',     lbl:'Iron',     unit:'mg',   color:'#f87171' },
+  { k:'magnesium',lbl:'Magnesium',unit:'mg',   color:'#38bdf8' },
+];
+
+let trendPeriod = '7d';
+let trendMetric = 'calories';
+
+function getDaysBack(period) {
+  return period === '7d' ? 7 : period === '30d' ? 30 : 90;
+}
+
+function getDayTotals(n) {
+  const days = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    const log = getLog(dateStr);
+    const totals = { date: dateStr, hasData: log.length > 0,
+      calories:0,protein:0,carbs:0,fat:0,fiber:0,sugar:0,
+      sodium:0,potassium:0,calcium:0,iron:0,magnesium:0,
+      oxalateCount: log.filter(e=>e.highOxalate).length };
+    log.forEach(e => METRICS.forEach(m => { totals[m.k] += (e[m.k]||0); }));
+    days.push(totals);
+  }
+  return days;
+}
+
+function setTrendPeriod(period, btn) {
+  trendPeriod = period;
+  document.querySelectorAll('.trend-period-tabs button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTrends();
+}
+
+function setTrendMetric(k) {
+  trendMetric = k;
+  document.querySelectorAll('.metric-chip').forEach(c => {
+    c.classList.toggle('active', c.dataset.k === k);
+    if (c.dataset.k === k) c.style.background = METRICS.find(m=>m.k===k).color;
+    else c.style.background = '';
+  });
+  renderChart();
+}
+
+function renderTrends() {
+  // Build metric chips
+  const chipsEl = document.getElementById('metric-chips');
+  chipsEl.innerHTML = METRICS.map(m =>
+    `<button class="metric-chip${m.k===trendMetric?' active':''}" data-k="${m.k}"
+       style="${m.k===trendMetric?'background:'+m.color+';border-color:'+m.color:''}"
+       onclick="setTrendMetric('${m.k}')">${m.lbl}</button>`
+  ).join('');
+
+  renderChart();
+  renderTrendStats();
+  renderOxalateTrend();
+  renderTrendDayList();
+}
+
+function renderChart() {
+  const n = getDaysBack(trendPeriod);
+  const days = getDayTotals(n);
+  const m = METRICS.find(x => x.k === trendMetric);
+  const values = days.map(d => d[m.k]);
+  const goal = getSettings().goals[m.k] || 0;
+
+  document.getElementById('chart-title').textContent = m.lbl;
+
+  const filledDays = days.filter(d => d.hasData);
+  const avg = filledDays.length
+    ? Math.round(filledDays.reduce((s,d) => s + d[m.k], 0) / filledDays.length)
+    : 0;
+  document.getElementById('chart-avg-label').textContent =
+    `avg ${avg}${m.unit}` + (goal ? ` / ${goal}${m.unit} goal` : '');
+
+  const W = 400, H = 130, PAD = { t:10, b:10, l:4, r:4 };
+  const innerW = W - PAD.l - PAD.r;
+  const innerH = H - PAD.t - PAD.b;
+
+  const maxVal = Math.max(...values, goal, 1);
+  const toX = i => PAD.l + (i / (values.length - 1 || 1)) * innerW;
+  const toY = v => PAD.t + innerH - (v / maxVal) * innerH;
+
+  let svg = '';
+
+  // Grid lines (3 horizontal)
+  for (let i = 1; i <= 3; i++) {
+    const y = PAD.t + innerH - (i / 3) * innerH;
+    const val = Math.round((i / 3) * maxVal);
+    svg += `<line x1="${PAD.l}" y1="${y}" x2="${W-PAD.r}" y2="${y}" stroke="#1e293b" stroke-width="1"/>`;
+    svg += `<text x="${PAD.l+2}" y="${y-3}" font-size="8" fill="#475569">${val}${m.unit}</text>`;
+  }
+
+  // Goal line
+  if (goal > 0 && goal <= maxVal * 1.2) {
+    const gy = toY(goal);
+    svg += `<line x1="${PAD.l}" y1="${gy}" x2="${W-PAD.r}" y2="${gy}"
+      stroke="${m.color}" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>`;
+    svg += `<text x="${W-PAD.r-2}" y="${gy-3}" font-size="8" fill="${m.color}" text-anchor="end" opacity="0.7">goal</text>`;
+  }
+
+  // Area fill
+  const pts = values.map((v,i) => `${toX(i)},${toY(v)}`).join(' ');
+  const firstX = toX(0), lastX = toX(values.length-1), baseY = PAD.t + innerH;
+  svg += `<polygon points="${firstX},${baseY} ${pts} ${lastX},${baseY}"
+    fill="${m.color}" opacity="0.12"/>`;
+
+  // Line
+  const linePts = values.map((v,i) => `${i===0?'M':'L'}${toX(i)},${toY(v)}`).join(' ');
+  svg += `<path d="${linePts}" fill="none" stroke="${m.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // Dots — only for 7d (fewer points)
+  if (trendPeriod === '7d') {
+    values.forEach((v, i) => {
+      if (!days[i].hasData) return;
+      svg += `<circle cx="${toX(i)}" cy="${toY(v)}" r="4" fill="${m.color}" stroke="var(--card)" stroke-width="2"/>`;
+    });
+  }
+
+  document.getElementById('trend-svg').innerHTML = svg;
+
+  // X labels
+  const labelsEl = document.getElementById('chart-x-labels');
+  let labelItems = [];
+  if (trendPeriod === '7d') {
+    labelItems = days.map(d => {
+      const dt = new Date(d.date + 'T12:00:00');
+      return dt.toLocaleDateString(undefined, {weekday:'short'});
+    });
+  } else if (trendPeriod === '30d') {
+    // Show every 5th
+    labelItems = days.map((d, i) => {
+      if (i % 5 !== 0 && i !== days.length-1) return '';
+      const dt = new Date(d.date + 'T12:00:00');
+      return dt.toLocaleDateString(undefined, {month:'short',day:'numeric'});
+    });
+  } else {
+    // Show weekly
+    labelItems = days.map((d, i) => {
+      if (i % 14 !== 0 && i !== days.length-1) return '';
+      const dt = new Date(d.date + 'T12:00:00');
+      return dt.toLocaleDateString(undefined, {month:'short',day:'numeric'});
+    });
+  }
+  labelsEl.innerHTML = labelItems.map(l =>
+    `<span style="${l?'':'opacity:0'}">${l||'.'}</span>`
+  ).join('');
+}
+
+function renderTrendStats() {
+  const n = getDaysBack(trendPeriod);
+  const days = getDayTotals(n);
+  const m = METRICS.find(x => x.k === trendMetric);
+  const filled = days.filter(d => d.hasData);
+  if (!filled.length) {
+    document.getElementById('trend-stats').innerHTML =
+      `<div class="trend-stat" style="grid-column:1/-1"><div class="ts-lbl" style="margin-top:8px">No data yet for this period</div></div>`;
+    return;
+  }
+
+  const vals = filled.map(d => d[m.k]);
+  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+  const maxV = Math.max(...vals);
+  const minV = Math.min(...vals);
+  const goal = getSettings().goals[m.k] || 0;
+  const daysOnTarget = goal ? filled.filter(d => {
+    if (m.k === 'sodium' || m.k === 'sugar') return d[m.k] <= goal;
+    return d[m.k] >= goal * 0.85;
+  }).length : null;
+
+  // Week-over-week delta
+  const half = Math.floor(filled.length / 2);
+  const firstHalf = filled.slice(0, half);
+  const secondHalf = filled.slice(half);
+  const avgFirst = firstHalf.length ? firstHalf.reduce((a,d)=>a+d[m.k],0)/firstHalf.length : 0;
+  const avgSecond = secondHalf.length ? secondHalf.reduce((a,d)=>a+d[m.k],0)/secondHalf.length : 0;
+  const delta = avgFirst > 0 ? Math.round(((avgSecond - avgFirst) / avgFirst) * 100) : 0;
+  const deltaClass = delta > 2 ? (m.k==='sodium'||m.k==='sugar'?'delta-down':'delta-up')
+                   : delta < -2 ? (m.k==='sodium'||m.k==='sugar'?'delta-up':'delta-down')
+                   : 'delta-same';
+  const deltaStr = delta > 0 ? `↑ ${delta}%` : delta < 0 ? `↓ ${Math.abs(delta)}%` : '→ stable';
+
+  document.getElementById('trend-stats').innerHTML = `
+    <div class="trend-stat">
+      <div class="ts-val" style="color:${m.color}">${Math.round(avg)}</div>
+      <div class="ts-lbl">Avg ${m.unit}/day</div>
+      <div class="ts-delta ${deltaClass}">${deltaStr}</div>
+    </div>
+    <div class="trend-stat">
+      <div class="ts-val">${Math.round(maxV)}</div>
+      <div class="ts-lbl">Peak ${m.unit}</div>
+    </div>
+    <div class="trend-stat">
+      <div class="ts-val">${Math.round(minV)}</div>
+      <div class="ts-lbl">Low ${m.unit}</div>
+    </div>
+    ${daysOnTarget !== null ? `
+    <div class="trend-stat" style="grid-column:1/-1">
+      <div class="ts-val">${daysOnTarget} / ${filled.length}</div>
+      <div class="ts-lbl">Days on target</div>
+    </div>` : ''}
+  `;
+}
+
+function renderOxalateTrend() {
+  const n = getDaysBack(trendPeriod);
+  const days = getDayTotals(n);
+  const oxDays = days.filter(d => d.oxalateCount > 0);
+  const card = document.getElementById('oxalate-trend-card');
+  const list = document.getElementById('oxalate-day-list');
+  if (!oxDays.length) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  list.innerHTML = oxDays.slice(-6).reverse().map(d => {
+    const dt = new Date(d.date + 'T12:00:00');
+    const label = dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    return `<div class="oxalate-day-row"><span>${label}</span><span>${d.oxalateCount} high-oxalate item${d.oxalateCount>1?'s':''}</span></div>`;
+  }).join('');
+}
+
+function renderTrendDayList() {
+  const n = Math.min(getDaysBack(trendPeriod), 30);
+  const days = getDayTotals(n);
+  const m = METRICS.find(x => x.k === trendMetric);
+  const goal = getSettings().goals[m.k] || 0;
+  const el = document.getElementById('trend-day-list');
+  const daysWithData = days.filter(d => d.hasData).reverse();
+  if (!daysWithData.length) { el.innerHTML = ''; return; }
+
+  el.innerHTML = daysWithData.map(d => {
+    const dt = new Date(d.date + 'T12:00:00');
+    const label = dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'});
+    const val = Math.round(d[m.k]);
+    const pct = goal ? Math.min((d[m.k]/goal)*100, 100) : 0;
+    const onTarget = goal && (m.k==='sodium'||m.k==='sugar' ? d[m.k]<=goal : d[m.k]>=goal*0.85);
+    return `<div class="log-item" style="flex-direction:column;gap:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:13px;font-weight:500">${label}</span>
+        <span style="font-size:14px;font-weight:700;color:${m.color}">${val}${m.unit}</span>
+      </div>
+      ${goal ? `<div style="background:var(--border);border-radius:4px;height:5px">
+        <div style="width:${pct}%;height:5px;border-radius:4px;background:${m.color};transition:width 0.4s"></div>
+      </div>
+      <div style="font-size:11px;color:${onTarget?'var(--green)':'var(--muted)'}">${onTarget?'✓ On target':'—'} · ${Math.round(pct)}% of goal</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ===================== INIT =====================
+updateDateDisplay();
+loadSettings();
+renderDashboard();
+</script>
+</body>
+</html>
