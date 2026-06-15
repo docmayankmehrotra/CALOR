@@ -9,7 +9,7 @@
 <meta http-equiv="Expires" content="0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Calor — Food Tracker</title>
+<title>Calor — Food Tracker v6</title>
 <link rel="manifest" href="manifest.json">
 <style>
   :root {
@@ -1101,7 +1101,7 @@ Be accurate and realistic. highOxalate is true for foods like spinach, kale, bee
     let data, lastErr;
     for (const model of models) {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${s.apiKey}`,
+        `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${s.apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
