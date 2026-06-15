@@ -13,18 +13,18 @@
 <link rel="manifest" href="manifest.json">
 <style>
   :root {
-    --bg: #0f0f1a;
-    --surface: #1a1a2e;
-    --card: #16213e;
+    --bg: #f8f9fa;
+    --surface: #ffffff;
+    --card: #ffffff;
     --accent: #e94560;
     --accent2: #0f3460;
-    --green: #4ade80;
-    --yellow: #fbbf24;
-    --orange: #fb923c;
-    --text: #e2e8f0;
-    --muted: #64748b;
-    --border: #1e293b;
-    --warn: #ef4444;
+    --green: #16a34a;
+    --yellow: #d97706;
+    --orange: #ea580c;
+    --text: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+    --warn: #dc2626;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -405,6 +405,54 @@
   }
   .streak-day.done { background: var(--green); }
 
+  /* --- SEARCH --- */
+  .search-bar-wrap {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .search-bar-wrap input {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+  .search-bar-wrap input::placeholder { color: var(--muted); }
+  .search-bar-wrap button {
+    background: var(--accent);
+    border: none;
+    border-radius: 12px;
+    color: white;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .search-result-item {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .search-result-item:active { border-color: var(--accent); }
+  .search-result-item .sr-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .search-result-item .sr-brand { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+  .search-result-item .sr-macros { display: flex; gap: 8px; flex-wrap: wrap; }
+  .search-result-item .sr-chip {
+    font-size: 11px;
+    background: var(--bg);
+    border-radius: 20px;
+    padding: 2px 8px;
+    color: var(--muted);
+  }
+  .search-result-item .sr-cal { font-size: 16px; font-weight: 700; color: var(--accent); }
+
   /* --- TRENDS --- */
   .trend-period-tabs {
     display: flex;
@@ -716,6 +764,34 @@
   </div>
 </div>
 
+<!-- SEARCH PAGE -->
+<div class="page" id="page-search">
+  <div class="search-bar-wrap">
+    <input type="text" id="search-input" placeholder="Search food, brand or product..." onkeydown="if(event.key==='Enter')searchFood()">
+    <button onclick="searchFood()">Go</button>
+  </div>
+  <div id="search-status" style="font-size:13px;color:var(--muted);text-align:center;padding:8px 0;display:none"></div>
+  <div id="search-results"></div>
+
+  <!-- Search result detail -->
+  <div class="analyze-result" id="search-detail" style="display:none">
+    <div id="search-oxalate-box" class="oxalate-alert" style="display:none">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div><strong>High Oxalate Food</strong><div id="search-oxalate-note" style="margin-top:2px;color:var(--muted);font-size:12px"></div></div>
+    </div>
+    <div class="result-food-name" id="search-detail-name"></div>
+    <div class="result-serving" id="search-detail-serving"></div>
+    <div class="result-grid" id="search-detail-macros"></div>
+    <div class="section-title">Minerals</div>
+    <div class="result-grid" id="search-detail-micros"></div>
+    <button class="btn btn-primary" onclick="logSearchResult()" style="margin-top:8px">+ Add to Log</button>
+    <button class="btn btn-secondary" onclick="document.getElementById('search-detail').style.display='none'">Back to results</button>
+  </div>
+</div>
+
 <!-- TRENDS PAGE -->
 <div class="page" id="page-trends">
   <div class="trend-period-tabs">
@@ -846,6 +922,12 @@
     </svg>
     Log Food
   </button>
+  <button onclick="showPage('search',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    Search
+  </button>
   <button onclick="showPage('trends',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
@@ -912,6 +994,7 @@ function showPage(name, btn) {
   if (name === 'dashboard') renderDashboard();
   if (name === 'history') renderHistory();
   if (name === 'trends') renderTrends();
+  if (name === 'search') { document.getElementById('search-input').focus(); }
 }
 
 function toast(msg, dur = 2500) {
@@ -1618,6 +1701,157 @@ function renderTrendDayList() {
       <div style="font-size:11px;color:${onTarget?'var(--green)':'var(--muted)'}">${onTarget?'✓ On target':'—'} · ${Math.round(pct)}% of goal</div>` : ''}
     </div>`;
   }).join('');
+}
+
+// ===================== FOOD SEARCH =====================
+let currentSearchResult = null;
+
+async function searchFood() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return;
+  const status = document.getElementById('search-status');
+  const resultsEl = document.getElementById('search-results');
+  document.getElementById('search-detail').style.display = 'none';
+  status.style.display = 'block';
+  status.textContent = 'Searching…';
+  resultsEl.innerHTML = '';
+
+  try {
+    const res = await fetch(
+      `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=20&fields=product_name,brands,nutriments,serving_size,image_thumb_url`
+    );
+    const data = await res.json();
+    const products = (data.products || []).filter(p => p.product_name && p.nutriments);
+
+    if (!products.length) {
+      status.textContent = 'No results found. Try a different name.';
+      return;
+    }
+    status.style.display = 'none';
+
+    resultsEl.innerHTML = products.map((p, i) => {
+      const n = p.nutriments;
+      const cal = Math.round(n['energy-kcal_serving'] || n['energy-kcal_100g'] || 0);
+      const pro = Math.round(n['proteins_serving'] || n['proteins_100g'] || 0);
+      const carb = Math.round(n['carbohydrates_serving'] || n['carbohydrates_100g'] || 0);
+      const fat = Math.round(n['fat_serving'] || n['fat_100g'] || 0);
+      return `<div class="search-result-item" onclick="selectSearchResult(${i})">
+        <div class="sr-name">${p.product_name}</div>
+        ${p.brands ? `<div class="sr-brand">${p.brands}</div>` : ''}
+        <div class="sr-macros">
+          <span class="sr-cal">${cal} kcal</span>
+          <span class="sr-chip">P ${pro}g</span>
+          <span class="sr-chip">C ${carb}g</span>
+          <span class="sr-chip">F ${fat}g</span>
+          ${p.serving_size ? `<span class="sr-chip">${p.serving_size}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+
+    // Store for later
+    window._searchProducts = products;
+
+  } catch(e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+function selectSearchResult(i) {
+  const p = window._searchProducts[i];
+  const n = p.nutriments;
+
+  const get = (keys, fallback = 0) => {
+    for (const k of keys) { if (n[k] != null) return Math.round(n[k] * 10) / 10; }
+    return fallback;
+  };
+
+  const result = {
+    name: p.product_name + (p.brands ? ` (${p.brands})` : ''),
+    serving: p.serving_size || '100g',
+    calories:  get(['energy-kcal_serving','energy-kcal_100g']),
+    protein:   get(['proteins_serving','proteins_100g']),
+    carbs:     get(['carbohydrates_serving','carbohydrates_100g']),
+    fat:       get(['fat_serving','fat_100g']),
+    sugar:     get(['sugars_serving','sugars_100g']),
+    fiber:     get(['fiber_serving','fiber_100g']),
+    sodium:    get(['sodium_serving','sodium_100g']) * 1000, // convert g→mg
+    potassium: get(['potassium_serving','potassium_100g']) * 1000,
+    calcium:   get(['calcium_serving','calcium_100g']) * 1000,
+    iron:      get(['iron_serving','iron_100g']) * 1000,
+    magnesium: get(['magnesium_serving','magnesium_100g']) * 1000,
+    emoji: '🔍',
+    thumb: p.image_thumb_url || null,
+  };
+
+  // Sodium is already in mg in OpenFoodFacts for most entries — fix double conversion
+  if (n['sodium_serving'] > 1 || n['sodium_100g'] > 1) {
+    result.sodium = get(['sodium_serving','sodium_100g']);
+  }
+
+  const nameLower = result.name.toLowerCase();
+  result.highOxalate = HIGH_OXALATE.some(ox => nameLower.includes(ox));
+  result.oxalateNote = result.highOxalate ? 'This food is high in oxalates. Consume in moderation.' : '';
+
+  currentSearchResult = result;
+
+  // Show detail
+  document.getElementById('search-results').style.display = 'none';
+  document.getElementById('search-status').style.display = 'none';
+  const detail = document.getElementById('search-detail');
+  detail.style.display = 'block';
+
+  document.getElementById('search-detail-name').textContent = result.name;
+  document.getElementById('search-detail-serving').textContent = 'Per ' + result.serving;
+
+  const macros = [
+    {k:'calories',lbl:'Calories',unit:'kcal'},
+    {k:'protein',lbl:'Protein',unit:'g'},
+    {k:'carbs',lbl:'Carbs',unit:'g'},
+    {k:'fat',lbl:'Fat',unit:'g'},
+    {k:'sugar',lbl:'Sugar',unit:'g'},
+    {k:'fiber',lbl:'Fiber',unit:'g'},
+  ];
+  document.getElementById('search-detail-macros').innerHTML = macros.map(m =>
+    `<div class="result-cell"><div class="rv">${Math.round(result[m.k]||0)}${m.unit}</div><div class="rk">${m.lbl}</div></div>`
+  ).join('');
+
+  const micros = [
+    {k:'sodium',lbl:'Sodium',unit:'mg'},
+    {k:'potassium',lbl:'Potassium',unit:'mg'},
+    {k:'calcium',lbl:'Calcium',unit:'mg'},
+    {k:'iron',lbl:'Iron',unit:'mg'},
+    {k:'magnesium',lbl:'Magnesium',unit:'mg'},
+  ];
+  document.getElementById('search-detail-micros').innerHTML = micros.map(m =>
+    `<div class="result-cell"><div class="rv">${Math.round(result[m.k]||0)}${m.unit}</div><div class="rk">${m.lbl}</div></div>`
+  ).join('');
+
+  const oxBox = document.getElementById('search-oxalate-box');
+  oxBox.style.display = result.highOxalate ? 'flex' : 'none';
+  document.getElementById('search-oxalate-note').textContent = result.oxalateNote;
+
+  detail.scrollIntoView({ behavior: 'smooth' });
+}
+
+function logSearchResult() {
+  if (!currentSearchResult) return;
+  const log = getLog(currentDate);
+  log.push({
+    ...currentSearchResult,
+    time: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),
+    id: Date.now()
+  });
+  saveLog(currentDate, log);
+  toast('✓ ' + currentSearchResult.name + ' logged!');
+
+  // Reset search UI
+  document.getElementById('search-detail').style.display = 'none';
+  document.getElementById('search-results').innerHTML = '';
+  document.getElementById('search-results').style.display = 'block';
+  document.getElementById('search-input').value = '';
+  currentSearchResult = null;
+
+  showPage('dashboard', document.querySelectorAll('nav button')[0]);
 }
 
 // ===================== INIT =====================
