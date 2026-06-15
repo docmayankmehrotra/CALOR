@@ -1102,7 +1102,7 @@ Be accurate and realistic. highOxalate is true for foods like spinach, kale, bee
           'X-Title': 'Calor Food Tracker'
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-preview-05-20:free',
+          model: 'meta-llama/llama-4-scout:free',
           messages: [{ role: 'user', content: [
             { type: 'text', text: prompt },
             { type: 'image_url', image_url: { url: currentImageData } }
